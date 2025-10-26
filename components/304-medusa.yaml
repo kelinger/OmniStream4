@@ -1,0 +1,34 @@
+#
+# Medusa - TV Show catalog and management
+#
+  medusa:
+    image: lscr.io/linuxserver/medusa
+    container_name: ${MEDUSANAME}
+    hostname: ${MEDUSANAME}
+    domainname: ${MYDOMAIN}
+    restart: unless-stopped
+    depends_on:
+      traefik:
+        condition: service_healthy
+    environment:
+      - PGID=${GROUPID}
+      - PUID=${USERID}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${CONFIGS}/${MEDUSANAME}:/config
+      - ${HOME}/logs:/config/logs
+      - ${MERGEMOUNT}:/cloud
+      - ${DOWNLOADS}:/downloads
+      - ${TV}:/tv
+      - /bin/netstat:/bin/netstat:ro
+      - /usr/bin/killall:/usr/bin/killall:ro
+    labels:
+      - "omni=${MEDUSANAME},${MYDOMAIN},yes,yes,yes"
+      - autoheal=true
+      - traefik.enable=true
+      - traefik.http.routers.medusa.rule=Host(`${MEDUSANAME}.${MYDOMAIN}`)
+      - traefik.http.routers.medusa.tls=true
+      - traefik.http.routers.medusa.tls.certresolver=lets-encrypt
+      - traefik.http.services.medusa.loadbalancer.server.port=8081
+    networks:
+      - OmniNet

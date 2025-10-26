@@ -1,0 +1,37 @@
+#
+# Watchstate - Sync watch state between different media servers
+#
+  watchstate:
+    image: ghcr.io/arabcoders/watchstate:latest
+    container_name: watchstate
+    hostname: watchstate
+    domainname: ${MYDOMAIN}
+    restart: unless-stopped
+    user: "${USERID:-1000}:${GROUPID:-1000}"
+    environment:
+      - WS_UID=${USERID}
+      - WS_GID=${GROUPID}
+      - WS_TZ=${TIMEZONE}
+      - WS_LOGGER_FILE_ENABLE=INFO
+      - WS_CRON_IMPORT=1
+      - WS_CRON_EXPORT=1
+      - WS_CRON_PUSH=1
+      - WS_CRON_PROGRESS=1
+      - WS_PUSH_ENABLED=true
+    labels:
+      - "omni=watchstate,${MYDOMAIN},yes,yes,no"
+      - autoheal=true
+      - traefik.enable=true
+      - traefik.http.routers.watchstate.rule=Host(`watchstate.${MYDOMAIN}`)
+      - traefik.http.routers.watchstate.tls=true
+      - traefik.http.routers.watchstate.tls.certresolver=lets-encrypt
+      - traefik.http.services.watchstate.loadbalancer.server.port=8080
+    volumes:
+      - ${CONFIGS}/watchstate:/config
+    networks:
+      - OmniNet
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -ntlp | grep :8080"]
+      interval: 10s
+      timeout: 2s
+      retries: 3

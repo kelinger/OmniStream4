@@ -1,0 +1,20 @@
+#!/bin/bash
+
+source ${HOME}/OmniStream/bin/omni_aliases
+source ${HOME}/OmniStream/bin/omni_functions
+source ${HOME}/OmniStream/bin/omni_complete
+source ${HOME}/OmniStream/bin/upgrade
+source ${HOME}/.config/omnistream.conf
+
+[[ ":$PATH:" != *":OmniStream/bin:"* ]] && PATH="${HOME}/OmniStream/bin:${PATH}"
+
+
+fastfetch
+
+echo "
+OmniStream functions loaded into local environment.
+Installed version from:  $(git -C ${OMNIHOME} log --pretty="format:%cr" -n1)
+
+OmniStream Home:  omnistream.cloud
+(C) 2022-2024 - All Rights Reserved
+"

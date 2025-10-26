@@ -1,0 +1,4 @@
+#!/bin/bash
+
+echo NASPush
+/home/kelinger/bin/naspush

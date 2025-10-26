@@ -1,0 +1,6 @@
+networks:
+  OmniNet:
+    name: OmniNet
+    enable_ipv6: false
+  default:
+    driver: bridge

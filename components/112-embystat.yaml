@@ -1,0 +1,31 @@
+#
+# EmbyStat - Reports on Emby stats
+#
+  embystat:
+    image: lscr.io/linuxserver/embystat
+    container_name: ${EMBYSTATNAME}
+    hostname: ${EMBYSTATNAME}
+    domainname: ${MYDOMAIN}
+    restart: unless-stopped
+    environment:
+      - PUID=${USERID}
+      - PGID=${GROUPID}
+      - TZ=${TIMEZONE}
+    labels:
+      - "omni=${EMBYSTATNAME},${MYDOMAIN},yes,yes,no"
+      - autoheal=true
+      - traefik.enable=true
+      - traefik.http.routers.embystat.rule=Host(`${EMBYSTATNAME}.${MYDOMAIN}`)
+      - traefik.http.routers.embystat.tls=true
+      - traefik.http.routers.embystat.tls.certresolver=lets-encrypt
+      - traefik.http.services.embystat.loadbalancer.server.port=6555
+    volumes:
+      - /bin/netstat:/bin/netstat:ro
+      - ${CONFIGS}/${EMBYSTATNAME}:/config
+    networks:
+      - OmniNet
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -ntlp | grep :6555"]
+      interval: 10s
+      timeout: 2s
+      retries: 3
