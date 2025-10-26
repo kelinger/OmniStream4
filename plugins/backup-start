@@ -1,0 +1,10 @@
+#!/bin/bash
+
+echo Restarting vnstat
+sudo service vnstat restart
+
+echo Clearing logs
+rm /home/kelinger/OmniStream/logs/*.?.log /home/kelinger/OmniStream/logs/hardware* /home/kelinger/OmniStream/logs/*.?.txt /home/kelinger/OmniStream/logs/embyserver-* > /dev/null 2>&1
+
+echo Packing Opt
+sudo tar cjf ~/opt.tar.bz2 /opt

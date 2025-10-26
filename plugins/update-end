@@ -1,0 +1,6 @@
+#!/bin/bash
+
+cd ${HOME}/git/LS_COLORS
+git pull
+update-compose
+pipx upgrade-all

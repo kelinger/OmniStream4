@@ -1,0 +1,5 @@
+#version: "3.8"
+  #
+  # OmniPlex - Video streaming, management, and downloading
+  # 
+services:
