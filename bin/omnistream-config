@@ -35,7 +35,7 @@ set_config() {
 # Get a configuration value
 get_config() {
     local key="$1"
-    
+
     if [ -z "${key}" ]; then
         echo "Error: Configuration key cannot be empty"
         return 1
@@ -56,7 +56,7 @@ delete_config() {
     if [ -z "${key}" ]; then
         echo "Error: Configuration key cannot be empty"
         return 1
-    }
+    fi
 
     jq "del(.\"${key}\")" "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && \
     mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"

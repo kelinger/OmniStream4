@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# OmniStream Configuration File Converter
+# Converts the existing bash-style config to JSON format
+
+# Configuration paths
+SOURCE_CONFIG="${HOME}/.config/omnistream.conf"
+TEMP_JSON="/tmp/omnistream_config.json"
+CONFIG_SCRIPT="${HOME}/omnistream/bin/omnistream-config"
+
+# Ensure the configuration script exists
+if [ ! -x "${CONFIG_SCRIPT}" ]; then
+    echo "Error: OmniStream configuration script not found at ${CONFIG_SCRIPT}"
+    exit 1
+fi
+
+# Function to clean and process configuration values
+clean_config_value() {
+    local value="$1"
+
+    # Remove surrounding quotes if present
+    value="${value%\"}"
+    value="${value#\"}"
+
+    # Remove ANSI color codes
+    value=$(echo "${value}" | sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g")
+
+    # Escape special characters
+    value=$(printf '%s' "$value" | sed 's/"/\\"/g')
+
+    echo "${value}"
+}
+
+# Main conversion function
+convert_config_to_json() {
+    # Create a temporary JSON file
+    echo "{" > "${TEMP_JSON}"
+
+    # Flag to handle comma placement
+    local first_entry=true
+
+    # Read the source configuration file
+    while IFS='=' read -r key value; do
+        # Skip comments and empty lines
+        [[ "${key}" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${key}" ]] && continue
+
+        # Trim whitespace
+        key=$(echo "${key}" | xargs)
+        value=$(echo "${value}" | xargs)
+
+        # Skip section headers
+        [[ "${key}" =~ ^#+ ]] && continue
+
+        # Skip color definitions
+        [[ "${key}" == STD || "${key}" == RED || "${key}" == GREEN ]] && continue
+
+        # Clean the value
+        cleaned_value=$(clean_config_value "${value}")
+
+        # Add comma if not the first entry
+        if [ "${first_entry}" = false ]; then
+            echo "," >> "${TEMP_JSON}"
+        fi
+
+        # Write to temporary JSON file
+        printf '  "%s": "%s"' "${key}" "${cleaned_value}" >> "${TEMP_JSON}"
+
+        first_entry=false
+    done < "${SOURCE_CONFIG}"
+
+    # Close the JSON object
+    echo "" >> "${TEMP_JSON}"
+    echo "}" >> "${TEMP_JSON}"
+
+    # Validate JSON
+    if ! jq empty "${TEMP_JSON}" >/dev/null 2>&1; then
+        echo "Error: Invalid JSON generated"
+        exit 1
+    fi
+
+    # Display the generated JSON
+    echo "Generated JSON configuration:"
+    cat "${TEMP_JSON}"
+
+    # Optional: Confirm importing to new config system
+    read -p "Do you want to import these settings to the new configuration system? (y/N) " response
+    if [[ "${response,,}" == "y" ]]; then
+        # Use jq to parse and set each key-value pair
+        jq -r 'to_entries | .[] | .key + "=" + .value' "${TEMP_JSON}" | while IFS='=' read -r key value; do
+            "${CONFIG_SCRIPT}" set "${key}" "${value}"
+        done
+        echo "Configuration imported successfully."
+    fi
+}
+
+# Main execution
+main() {
+    # Verify source configuration exists
+    if [ ! -f "${SOURCE_CONFIG}" ]; then
+        echo "Error: Source configuration file not found at ${SOURCE_CONFIG}"
+        exit 1
+    fi
+
+    convert_config_to_json
+}
+
+# Execute main function
+main
