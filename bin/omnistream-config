@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# OmniStream Configuration Management Utility
+
+CONFIG_DIR="${HOME}/.omnistream"
+CONFIG_FILE="${CONFIG_DIR}/config.json"
+
+# Ensure config directory exists
+mkdir -p "${CONFIG_DIR}"
+
+# Initialize configuration if not exists
+initialize_config() {
+    if [ ! -f "${CONFIG_FILE}" ]; then
+        echo "{}" > "${CONFIG_FILE}"
+    fi
+}
+
+# Set a configuration value
+set_config() {
+    local key="$1"
+    local value="$2"
+
+    # Validate inputs
+    if [ -z "${key}" ]; then
+        echo "Error: Configuration key cannot be empty"
+        return 1
+    fi
+
+    # Use jq to update JSON
+    jq --arg key "${key}" --arg value "${value}" \
+       '. + {($key): $value}' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && \
+    mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
+}
+
+# Get a configuration value
+get_config() {
+    local key="$1"
+    
+    if [ -z "${key}" ]; then
+        echo "Error: Configuration key cannot be empty"
+        return 1
+    fi
+
+    jq -r ".$key // empty" "${CONFIG_FILE}"
+}
+
+# List all configuration keys
+list_config() {
+    jq 'keys' "${CONFIG_FILE}"
+}
+
+# Delete a specific configuration key
+delete_config() {
+    local key="$1"
+
+    if [ -z "${key}" ]; then
+        echo "Error: Configuration key cannot be empty"
+        return 1
+    }
+
+    jq "del(.\"${key}\")" "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && \
+    mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
+}
+
+# Main function to handle different operations
+main() {
+    initialize_config
+
+    case "$1" in
+        set)
+            set_config "$2" "$3"
+            ;;
+        get)
+            get_config "$2"
+            ;;
+        list)
+            list_config
+            ;;
+        delete)
+            delete_config "$2"
+            ;;
+        *)
+            echo "Usage:"
+            echo "  $0 set <key> <value>   - Set a configuration value"
+            echo "  $0 get <key>           - Get a configuration value"
+            echo "  $0 list               - List all configuration keys"
+            echo "  $0 delete <key>        - Delete a configuration key"
+            exit 1
+            ;;
+    esac
+}
+
+# Execute main function with all arguments
+main "$@"

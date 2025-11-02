@@ -1,0 +1,150 @@
+
+#!/bin/bash
+
+# OmniStream NFS Mounting Utility
+# Designed for Debian Linux
+# Helps users mount NFS shares with minimal Linux knowledge
+
+# Error handling and logging
+set -eE
+trap 'handle_error $?' ERR
+
+LOG_FILE="${HOME}/omnistream_nfs_mount.log"
+touch "${LOG_FILE}"
+
+# Verify Debian Version
+verify_debian_version() {
+    # Ensure running on Debian
+    if [ ! -f /etc/debian_version ]; then
+        dialog --title "Unsupported Operating System" --msgbox "Error: This script requires Debian Linux." 10 50
+        exit 1
+    fi
+}
+
+# Dependency check and installation
+check_and_install_dependencies() {
+    local dependencies=(
+        nfs-common 
+        dialog 
+        sudo 
+        curl 
+        wget 
+        cifs-utils 
+        sshfs
+    )
+
+    # Progress dialog for dependency installation
+    {
+        echo "0"
+        echo "Updating package lists..."
+        sudo apt-get update -qq 2>> "${LOG_FILE}"
+
+        # Install dependencies
+        total=${#dependencies[@]}
+        for i in "${!dependencies[@]}"; do
+            pkg="${dependencies[i]}"
+            progress=$((10 + (i * 80 / total)))
+            
+            if ! dpkg -s "${pkg}" >/dev/null 2>&1; then
+                echo "Installing ${pkg}..."
+                sudo apt-get install -y "${pkg}" >> "${LOG_FILE}" 2>&1
+            fi
+            
+            echo "${progress}" 
+        done
+
+        echo "100"
+    } | dialog --title "Dependency Check" --gauge "Preparing NFS utilities..." 10 50 0
+
+    # Ensure cursor is at the bottom of the screen
+    echo
+}
+
+# Error handling function
+handle_error() {
+    dialog --title "Installation Error" --msgbox "An error occurred (Exit code: $1). Please check ${LOG_FILE} for details." 10 50
+    exit 1
+}
+
+# Get NFS Server Details
+get_nfs_server_details() {
+    # Local variables to store NFS connection details
+    local SERVER_IP=""
+    local NFS_PATH=""
+    local LOCAL_MOUNT_POINT=""
+
+    # Dialog to get NFS Server IP
+    SERVER_IP=$(dialog --title "NFS Server" --inputbox "Enter the NFS Server IP Address:" 10 50 3>&1 1>&2 2>&3)
+    if [ -z "${SERVER_IP}" ]; then
+        dialog --title "Error" --msgbox "Server IP cannot be empty." 10 50
+        exit 1
+    fi
+
+    # Dialog to get NFS Path
+    NFS_PATH=$(dialog --title "NFS Path" --inputbox "Enter the NFS Share Path (e.g., /volume1/share):" 10 50 3>&1 1>&2 2>&3)
+    if [ -z "${NFS_PATH}" ]; then
+        dialog --title "Error" --msgbox "NFS Path cannot be empty." 10 50
+        exit 1
+    fi
+
+    # Dialog to get Local Mount Point
+    LOCAL_MOUNT_POINT=$(dialog --title "Local Mount Point" --inputbox "Enter the Local Mount Point (e.g., /mnt/nfsshare):" 10 50 3>&1 1>&2 2>&3)
+    if [ -z "${LOCAL_MOUNT_POINT}" ]; then
+        dialog --title "Error" --msgbox "Local Mount Point cannot be empty." 10 50
+        exit 1
+    fi
+
+    # Confirm NFS Mount Details
+    dialog --title "Confirm NFS Mount" --yesno "Confirm Mount Details:
+Server IP: ${SERVER_IP}
+NFS Path: ${NFS_PATH}
+Local Mount Point: ${LOCAL_MOUNT_POINT}" 12 50
+
+    # Check user confirmation
+    if [ $? -eq 0 ]; then
+        # Create local mount point if it doesn't exist
+        sudo mkdir -p "${LOCAL_MOUNT_POINT}"
+
+        # Attempt NFS mount
+        if sudo mount -t nfs "${SERVER_IP}:${NFS_PATH}" "${LOCAL_MOUNT_POINT}" >> "${LOG_FILE}" 2>&1; then
+            dialog --title "Mount Successful" --msgbox "NFS Share mounted successfully at ${LOCAL_MOUNT_POINT}" 10 50
+            
+            # Optional: Add to /etc/fstab for persistent mount
+            dialog --title "Persistent Mount" --yesno "Would you like to make this mount persistent across reboots?" 10 50
+            if [ $? -eq 0 ]; then
+                echo "${SERVER_IP}:${NFS_PATH} ${LOCAL_MOUNT_POINT} nfs defaults,_netdev 0 0" | sudo tee -a /etc/fstab
+                dialog --title "Persistent Mount" --msgbox "Mount added to /etc/fstab" 10 50
+            fi
+        else
+            dialog --title "Mount Failed" --msgbox "Failed to mount NFS share. Check ${LOG_FILE} for details." 10 50
+            exit 1
+        fi
+    else
+        dialog --title "Mount Canceled" --msgbox "NFS mount operation canceled." 10 50
+        exit 0
+    fi
+}
+
+# Main installation process
+main() {
+    # Clear screen
+    clear
+
+    # Welcome dialog
+    dialog --title "OmniStream NFS Mounting Utility" --msgbox "Welcome to the NFS Mounting Assistant" 10 50
+
+    # Verify Debian version
+    verify_debian_version
+
+    # Check and install dependencies
+    check_and_install_dependencies
+
+    # Get and mount NFS share
+    get_nfs_server_details
+
+    # Ensure cursor is at the bottom of the screen
+    echo
+}
+
+# Execute main function
+main
