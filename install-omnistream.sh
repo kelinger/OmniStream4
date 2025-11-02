@@ -138,6 +138,75 @@ install_docker() {
     echo
 }
 
+# Clone OmniStream project
+clone_omnistream_project() {
+    # Define the project repository (replace with actual repository URL)
+    REPO_URL="https://github.com/kelinger/OmniStream4.git"
+    INSTALL_DIR="$HOME/omnistream"
+
+    # Create installation directory if it doesn't exist
+    mkdir -p "$INSTALL_DIR"
+
+    # Progress dialog for project cloning
+    {
+        echo "0" ; sleep 0.5
+        
+        echo "30" ; echo "Preparing to clone OmniStream repository..."
+        
+        echo "60" ; echo "Cloning project from repository..."
+        git clone "$REPO_URL" "$INSTALL_DIR" >> "$LOG_FILE" 2>&1
+        
+        echo "90" ; echo "Setting up project directory..."
+        cd "$INSTALL_DIR"
+        
+        echo "100"
+    } | dialog --title "OmniStream Project" --gauge "Downloading OmniStream project..." 10 50 0
+
+    # Verify successful clone
+    if [ -d "$INSTALL_DIR/.git" ]; then
+        dialog --title "Project Clone" --msgbox "OmniStream project successfully cloned to $INSTALL_DIR" 10 50
+    else
+        dialog --title "Clone Error" --msgbox "Failed to clone OmniStream project. Please check the repository URL." 10 50
+        exit 1
+    fi
+}
+
+# Prepare OmniStream project directories and user configuration
+prepare_omnistream_environment() {
+    # Define directories to create
+    local dirs=(
+        "${HOME}/omnistream/configs"
+        "${HOME}/omnistream/enabled"
+        "${HOME}/omnistream/logs"
+    )
+
+    # Create directories if they don't exist
+    for dir in "${dirs[@]}"; do
+        if [ ! -d "${dir}" ]; then
+            mkdir -p "${dir}"
+            dialog --title "Directory Creation" --msgbox "Created directory: ${dir}" 10 50
+        fi
+    done
+
+    # Modify user's .bashrc to add OmniStream bin to PATH and run omni_init
+    # First, ensure the modifications are not already present
+    if ! grep -q "OmniStream Configuration" "${HOME}/.bashrc"; then
+        {
+            echo ""
+            echo "# OmniStream Configuration"
+            echo "# Add OmniStream bin to PATH"
+            echo "export PATH=\"${HOME}/omnistream/bin:${PATH}\""
+            echo ""
+            echo "# Run OmniStream initialization script"
+            echo "if [ -x \"${HOME}/omnistream/bin/omni_init\" ]; then"
+            echo "    \"${HOME}/omnistream/bin/omni_init\""
+            echo "fi"
+        } >> "${HOME}/.bashrc"
+
+        dialog --title "User Configuration" --msgbox "Updated .bashrc to include OmniStream configuration" 10 50
+    fi
+}
+
 # Main installation process
 main() {
     # Clear screen
@@ -158,8 +227,16 @@ main() {
     # Install Docker
     install_docker
 
+    # Clone OmniStream project
+    clone_omnistream_project
+
+    # Prepare OmniStream environment
+    prepare_omnistream_environment
+
     # Completion dialog
-    dialog --title "Installation Complete" --msgbox "OmniStream system preparation is complete! Ready for next steps." 10 50
+    dialog --title "Installation Complete" --msgbox "OmniStream system preparation is complete! 
+Project cloned to ${HOME}/omnistream
+Environment configured for OmniStream" 12 50
 
     # Ensure cursor is at the bottom of the screen
     echo
